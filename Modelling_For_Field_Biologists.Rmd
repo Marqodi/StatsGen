@@ -15,21 +15,29 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r Box 3.1}
 # Creating Fig 3.3 which shows shifting phenotypes under perfect heritability
 distr_shift <- function(variance, initial_mean, a, b) {
+  # Output is the magnitude of the shift with f0 being the initial and f1 being the new distribution.
+  # z (distribution of genotypes) is 201 different values that lie between 13 and 17 (not very general 
+  # as it assumes that initial mean will fall between these values)
   z <- seq(13, 17, length.out = 201)
-  f <- 1/(2*sqrt(variance))*exp(-0.5*((z-initial_mean)/(sqrt(variance)))^2)
+  # density function of normal distribution 
+  f <- 1/(2*sqrt(variance))*exp(-0.5*((z-initial_mean)/(sqrt(variance)))^2) 
+  # normalize it, ensuring that values sum to 1
   f0 <- f/sum(f)
-  r <- a*(z-b)
-  f1 <- f0*exp(r)
-  f1 <- f1/sum(f1)
-  plot(z, f0, type = "l", col = "blue", xlab = "z", ylab = "Density")
+  r <- a*(z-b) # r is the additive value of fitness from one generation to the next 
+  f1 <- f0*exp(r) # new distribution
+  f1 <- f1/sum(f1) # normalize the new distribution
+  # plot the initial f0 genotype spread against the f1 genotype spread 
+  plot(z, f0, type = "l", col = "blue", xlab = "z", ylab = "Density") 
   lines(z, f1, col = "red")
   legend("topright", legend = c("f0", "f1"), col = c("blue", "red"), lty = 1)
+  # new mean is calculated as a weighted sum of values of z b/c they change after next generation
   new_mean <- sum(f1*z)
   shift <- new_mean - initial_mean
   return(list(shift = shift, f0 = f0, f1 = f1, z = z))
 }
 
-# Example usage
+# Value distribution as indicated in the book
+# variance = 0.1, initial_mean = 15, a = 1, b = 15
 shift <- distr_shift(0.1, 15, 1, 15)$shift 
 
 ```
