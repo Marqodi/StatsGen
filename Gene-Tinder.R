@@ -108,7 +108,7 @@ Gene_Tinder <- function(
   num_generations = 5,
   initial_pop = 2000,
   num_loci = 10000,
-  max_population_size = 40000,   
+  max_population_size = 30000,   
   intrinsic_growth_rate = 0.5,   
   
   x_sd = 50, y_sd = 50, z_sd = 50 
@@ -382,7 +382,7 @@ Gene_Tinder <- function(
     
     # Configure Parallel Backend
     if (parallel) {
-      num_cores <- availableCores() - 1
+      num_cores <- availableCores() - 2
       if (num_cores < 1) num_cores <- 1
       plan(multisession, workers = num_cores)
       cat(paste("\n--- Mode: PARALLEL (Cores:", num_cores, ") ---\n"))
@@ -434,10 +434,10 @@ Gene_Tinder <- function(
 
 # Parallel Batch Run (Saves CSVs):
 final_csv <- Gene_Tinder(
-   experiment_name = "My_GeneTinder_Experiment",
-   num_runs = 1, parallel = TRUE,
-   weight_dist = 1.0, weight_q = 1.0, weight_p = 1.0,
+   experiment_name = "Gene-Tinder_Random",
+   num_runs = 10, parallel = TRUE,
+   weight_dist = 0.0, weight_q = 0.0, weight_p = 0.0, weight_random = 1.0,
    k_dist = 1, k_q = 1, k_p = 1,
-   min_fitness_scalar = 0.5, 
+   min_fitness_scalar = 1.0, 
    species_A_ratio = 0.5
  )
