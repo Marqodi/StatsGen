@@ -171,7 +171,10 @@ Gene_Tinder <- function(
     # Primary Dataframe: Holds Genetics, Traits, Location, and Demographics
     pop_data <- cbind(starting_genotype, 
                       x_coordinate = x_c, y_coordinate = y_c, z_coordinate = z_c, 
-                      age = rep(1, initial_pop))
+                      age = rep(1, initial_pop),
+                      id = 1:initial_pop,
+                      maternal_id = rep(NA, initial_pop),
+                      paternal_id = rep(NA, initial_pop))
     
     current_gen <- 1
     
@@ -328,9 +331,16 @@ Gene_Tinder <- function(
           off_y <- round(pmax(0, rnorm(actual_offspring, (1-off_q)*100, y_sd)))
           off_z <- round(pmax(0, rnorm(actual_offspring, (1-off_q)*100, z_sd)))
           
+          # Assign Offspring IDs and Parentage
+          current_max_id <- max(pop_data[, "id"])
+          off_ids <- (current_max_id + 1):(current_max_id + actual_offspring)
+          mom_ids <- moms[mom_reps, "id"]
+          dad_ids <- dads[dad_picks[mom_reps], "id"]
+          
           offspring_pop <- cbind(off_genes, q_score=off_q, phenotype_score=off_pheno, 
                                  x_coordinate=off_x, y_coordinate=off_y, z_coordinate=off_z, 
-                                 age=rep(1, actual_offspring))
+                                 age=rep(1, actual_offspring),
+                                 id=off_ids, maternal_id=mom_ids, paternal_id=dad_ids)
         }
       }
       
@@ -354,7 +364,8 @@ Gene_Tinder <- function(
         df <- data.frame(generation=current_gen, q_score=pop_data[,"q_score"], 
                          phenotype_score=pop_data[,"phenotype_score"], heterozygosity=het,
                          x=pop_data[,"x_coordinate"], y=pop_data[,"y_coordinate"], z=pop_data[,"z_coordinate"], 
-                         age=pop_data[,"age"])
+                         age=pop_data[,"age"],
+                         id=pop_data[,"id"], maternal_id=pop_data[,"maternal_id"], paternal_id=pop_data[,"paternal_id"])
         write_csv(df, file.path(save_dir, paste0("generation_data_G", current_gen, ".csv")))
       }
       
@@ -434,10 +445,10 @@ Gene_Tinder <- function(
 
 # Parallel Batch Run (Saves CSVs):
 final_csv <- Gene_Tinder(
-   experiment_name = "Gene-Tinder_Random",
+   experiment_name = "Gene-Tinder_IBD",
    num_runs = 10, parallel = TRUE,
-   weight_dist = 0.0, weight_q = 0.0, weight_p = 0.0, weight_random = 1.0,
+   weight_dist = 1.0, weight_q = 0.0, weight_p = 0.0, weight_random = 1.0,
    k_dist = 1, k_q = 1, k_p = 1,
-   min_fitness_scalar = 1.0, 
+   min_fitness_scalar = 0.7, 
    species_A_ratio = 0.5
  )
