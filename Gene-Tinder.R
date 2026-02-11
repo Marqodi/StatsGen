@@ -73,6 +73,9 @@ library(readr)
 #' @param x_sd Numeric. Spatial variance for X-coordinate initialization.
 #' @param y_sd Numeric. Spatial variance for Y-coordinate initialization.
 #' @param z_sd Numeric. Spatial variance for Z-coordinate initialization.
+#' 
+#' @param centreA Numeric. Mean location for Species A to be normally distributed. 
+#' @param centreB Numeric. Mean location for Species B to be normally distributed. 
 #'
 #' @return If num_runs = 1, returns a matrix of the final population. 
 #'   If num_runs > 1, returns the file path to the aggregated results CSV.
@@ -111,8 +114,24 @@ Gene_Tinder <- function(
   max_population_size = 30000,   
   intrinsic_growth_rate = 0.5,   
   
-  x_sd = 50, y_sd = 50, z_sd = 50 
+  # --- World Size ---
+  x_sd = 20, y_sd = 20, z_sd = 20, 
+  centreA = 50,
+  centreB = 150
 ) {
+  
+  # --- BOUNDARY GUARDRAILS: Coordinate Reflections
+  edge_fold <- function(coords){
+    
+    # 1. Bounce negative coordinates (Lower Boundary)
+    coords <- abs(coords)
+    
+    # 2. Bounce coordinates greater than 200 (Upper boundary)
+    coords <- ifelse(coords > 200, 400 - coords, coords)
+    
+    # 3. Backup clamping (Redundancy to ensure 0 - 200)
+    return(pmin(200, pmax(0, coords)))
+  }
   
   # ============================================================================
   # INTERNAL WORKER: The Biological Engine
@@ -159,14 +178,18 @@ Gene_Tinder <- function(
     
     # --- Spatial Distribution (Genotype-Environment Correlation) ---
     # Biological Context: Divergent species often prefer different micro-habitats.
-    # Species A prefers location 0; Species B prefers location 100.
+    # Species A prefers location 50; Species B prefers location 150.
+    # Species normally distributed along their preferred locaton. 
     # Hybrids naturally fall into intermediate spatial niches.
-    x_mean <- q_scores * 100; y_mean <- (1 - q_scores) * 100; z_mean <- (1 - q_scores) * 100
+    
+    x_mean <- ((1 - q_scores) * centreA) + (q_scores * centreB)
+    y_mean <- ((1 - q_scores) * centreA) + (q_scores * centreB)
+    z_mean <- ((1 - q_scores) * centreA) + (q_scores * centreB)
     
     # Place individuals stochastically around their preferred niche
-    x_c <- round(pmax(0, rnorm(initial_pop, x_mean, x_sd)))
-    y_c <- round(pmax(0, rnorm(initial_pop, y_mean, y_sd)))
-    z_c <- round(pmax(0, rnorm(initial_pop, z_mean, z_sd)))
+    x_c <- round(edge_fold(rnorm(initial_pop, x_mean, x_sd)))
+    y_c <- round(edge_fold(rnorm(initial_pop, y_mean, y_sd)))
+    z_c <- round(edge_fold(rnorm(initial_pop, z_mean, z_sd)))
     
     # Primary Dataframe: Holds Genetics, Traits, Location, and Demographics
     pop_data <- cbind(starting_genotype, 
@@ -327,9 +350,13 @@ Gene_Tinder <- function(
           off_pheno <- (pheno_heritability*off_p_gen) + ((1-pheno_heritability)*runif(actual_offspring))
           
           # Assign Offspring Coordinates (Eco-evolutionary feedback)
-          off_x <- round(pmax(0, rnorm(actual_offspring, off_q*100, x_sd)))
-          off_y <- round(pmax(0, rnorm(actual_offspring, (1-off_q)*100, y_sd)))
-          off_z <- round(pmax(0, rnorm(actual_offspring, (1-off_q)*100, z_sd)))
+          off_mean_x <- ((1 - off_q) * centreA) + (off_q * centreB)
+          off_mean_y <- ((1 - off_q) * centreA) + (off_q * centreB)
+          off_mean_z <- ((1 - off_q) * centreA) + (off_q * centreB)
+          
+          off_x <- round(edge_fold(rnorm(actual_offspring, off_mean_x, x_sd)))
+          off_y <- round(edge_fold(rnorm(actual_offspring, off_mean_y, y_sd)))
+          off_z <- round(edge_fold(rnorm(actual_offspring, off_mean_z, z_sd)))
           
           # Assign Offspring IDs and Parentage
           current_max_id <- max(pop_data[, "id"])
@@ -447,8 +474,8 @@ Gene_Tinder <- function(
 final_csv <- Gene_Tinder(
    experiment_name = "Gene-Tinder_IBD",
    num_runs = 10, parallel = TRUE,
-   weight_dist = 1.0, weight_q = 0.0, weight_p = 0.0, weight_random = 1.0,
+   weight_dist = 1.0, weight_q = 1.0, weight_p = 1.0, weight_random = 0.2,
    k_dist = 1, k_q = 1, k_p = 1,
-   min_fitness_scalar = 0.7, 
+   min_fitness_scalar = 1.0, 
    species_A_ratio = 0.5
  )
