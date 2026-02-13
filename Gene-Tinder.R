@@ -121,6 +121,10 @@ Gene_Tinder <- function(
 ) {
   
   # --- BOUNDARY GUARDRAILS: Coordinate Reflections
+  # This function is used to prevent individuals from leaving the simulated
+  # 'environment' by reflecting their coordinates back into range. The 
+  # potential impact on distributions should be minimal when compared to 
+  # simply clamping the coordinates at a maximum and minimum. 
   edge_fold <- function(coords){
     
     # 1. Bounce negative coordinates (Lower Boundary)
