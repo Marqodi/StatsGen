@@ -40,6 +40,8 @@ library(readr)
 #'   If 1, returns the population object directly (Interactive Mode). 
 #'   If >1, runs in parallel batch mode and saves CSVs to disk.
 #' @param parallel Boolean. If TRUE and num_runs > 1, utilizes available CPU cores to run simulation in parallel.
+#' @param export_genotypes Boolean. If TRUE, exports full genomic data for each individual. 
+#' WARNING: Will potentially export larger file sizes as population size, generations and loci number are increased. 
 #' 
 #' @param weight_dist Numeric. The weight of physical Euclidean distance in mate choice.
 #'   High values simulate low dispersal or preference for local mates.
@@ -85,7 +87,8 @@ Gene_Tinder <- function(
     # --- Execution Parameters ---
   experiment_name = "GeneTinder_Logistic", 
   num_runs = 1,                        
-  parallel = TRUE,                     
+  parallel = TRUE,
+  export_genotypes = FALSE,
   
   # --- Mating Preference Parameters ---
   weight_dist,         
@@ -391,12 +394,23 @@ Gene_Tinder <- function(
       # --- G. SAVE SNAPSHOT (Batch Only) ---
       if (!is.null(save_dir)) {
         het <- rowSums(pop_data[, 1:num_loci, drop=FALSE] == 1) / num_loci
+        
         # We strip the heavy genomic columns to save disk space, keeping only metadata.
         df <- data.frame(generation=current_gen, q_score=pop_data[,"q_score"], 
                          phenotype_score=pop_data[,"phenotype_score"], heterozygosity=het,
                          x=pop_data[,"x_coordinate"], y=pop_data[,"y_coordinate"], z=pop_data[,"z_coordinate"], 
                          age=pop_data[,"age"],
                          id=pop_data[,"id"], maternal_id=pop_data[,"maternal_id"], paternal_id=pop_data[,"paternal_id"])
+                         
+        # Toggleable option to export entire genomic dataset rather than simplified data                  
+        if (export_genotypes == TRUE){
+          genomic_df <- as.data.frame(pop_data[, 1:num_loci, drop=FALSE])
+          colnames(genomic_df) <- paste0("SNP_", 1:num_loci)
+          
+          # Bind the SNP columns to the metadata
+          df <- cbind(df, genomic_df)
+        }                  
+      
         write_csv(df, file.path(save_dir, paste0("generation_data_G", current_gen, ".csv")))
       }
       
@@ -477,7 +491,7 @@ Gene_Tinder <- function(
 # Parallel Batch Run (Saves CSVs):
 final_csv <- Gene_Tinder(
    experiment_name = "Gene-Tinder_IBD",
-   num_runs = 10, parallel = TRUE,
+   num_runs = 10, parallel = TRUE, export_genotype = FALSE, 
    weight_dist = 1.0, weight_q = 1.0, weight_p = 1.0, weight_random = 0.2,
    k_dist = 1, k_q = 1, k_p = 1,
    min_fitness_scalar = 1.0, 
