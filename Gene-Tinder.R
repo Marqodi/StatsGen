@@ -113,7 +113,7 @@ Gene_Tinder <- function(
   # --- Population Dynamics ---
   num_generations = 5,
   initial_pop = 2000,
-  num_loci = 10000,
+  num_loci = 1000,
   max_population_size = 30000,   
   intrinsic_growth_rate = 0.5,   
   
@@ -490,10 +490,14 @@ Gene_Tinder <- function(
 
 # Parallel Batch Run (Saves CSVs):
 final_csv <- Gene_Tinder(
-   experiment_name = "Gene-Tinder_IBD",
-   num_runs = 10, parallel = TRUE, export_genotype = FALSE, 
-   weight_dist = 1.0, weight_q = 1.0, weight_p = 1.0, weight_random = 0.2,
+   experiment_name = "Gene-Tinder_Wolves",
+   num_runs = 5, parallel = TRUE, export_genotype = FALSE, 
+   weight_dist = 0.1, weight_q = 0.1, weight_p = 1.0, weight_random = 0.1,
    k_dist = 1, k_q = 1, k_p = 1,
    min_fitness_scalar = 1.0, 
-   species_A_ratio = 0.5
+   species_A_ratio = 0.5,
+   pheno_heritability = 0.3,
+   initial_pop = 200,
+   max_population_size = 2000, 
+   pheno_loci_indices = 1:100,
  )

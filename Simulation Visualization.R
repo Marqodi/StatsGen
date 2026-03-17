@@ -1,6 +1,7 @@
 # ==============================================================================
 # FILE: Visualize_Results_Filtered.R
 # DESC: Visualizes simulation variance vs empirical target (Excluding Fixation)
+#       Updated: Plots 95% Confidence Interval for the Simulation Mean
 # ==============================================================================
 
 library(dplyr)
@@ -9,7 +10,7 @@ library(readr)
 library(tidyr)
 
 # --- 1. CONFIGURATION ---
-input_file <- "Gene-Tinder_Random/aggregated_results_primary.csv"
+input_file <- "Gene-Tinder_Urchins/aggregated_results_primary.csv"
 empirical_alpha <- 7.1
 empirical_beta  <- 2.8
 
@@ -28,7 +29,6 @@ cat(paste("Processing", n_distinct(final_data$run_id), "runs from generation", f
 # Custom function: Removes 0s and 1s, then fits Beta via Method of Moments
 estimate_beta_filtered <- function(x) {
   # FILTER STEP: Remove fixed individuals (0.0 and 1.0)
-  # We use a small epsilon tolerance to catch floating point near-matches
   x_hybrid <- x[x > 0.00001 & x < 0.99999]
   
   # Safety check: Need enough data points to calculate variance
@@ -82,14 +82,19 @@ sim_densities <- lapply(1:nrow(valid_runs), function(i) {
   )
 }) %>% bind_rows()
 
-# --- 5. AGGREGATE SIMULATION STATS ---
+# --- 5. AGGREGATE SIMULATION STATS (95% CI) ---
 sim_summary <- sim_densities %>%
   group_by(x) %>%
   summarise(
     mean_y = mean(y),
     sd_y   = sd(y),
-    ymin   = pmax(0, mean_y - sd_y),
-    ymax   = mean_y + sd_y
+    n      = n(),               # Count of valid runs
+    se     = sd_y / sqrt(n),    # Standard Error
+    # Calculate 95% Margin of Error using t-distribution
+    ci_95  = qt(0.975, df = n - 1) * se,
+    ymin   = pmax(0, mean_y - ci_95),
+    ymax   = mean_y + ci_95,
+    .groups = "drop"
   )
 
 # --- 6. GENERATE EMPIRICAL DATA ---
@@ -103,36 +108,39 @@ col_sim <- "#4E79A7"
 col_emp <- "#E15759"
 
 p <- ggplot() +
-  # Simulation Variance (Shadow)
+  # Simulation 95% Confidence Interval (Shadow)
   geom_ribbon(data = sim_summary, 
-              aes(x = x, ymin = ymin, ymax = ymax), 
-              fill = col_sim, alpha = 0.2) +
+              aes(x = x, ymin = ymin, ymax = ymax, fill = "95% Confidence Interval"), 
+              alpha = 0.2) +
   
   # Simulation Mean
   geom_line(data = sim_summary, 
-            aes(x = x, y = mean_y, color = "Simulated Distribution"), 
+            aes(x = x, y = mean_y, color = "Simulated Mean"), 
             linewidth = 1.2) +
   
   # Empirical Target
   geom_line(data = empirical_df, 
-            aes(x = x, y = y, color = "Empirical Distribution"), 
+            aes(x = x, y = y, color = "Empirical Target"), 
             linewidth = 1.2, linetype = "dashed") +
   
   scale_color_manual(name = NULL, 
-                     values = c("Simulated Distribution" = col_sim, 
-                                "Empirical Distribution" = col_emp)) +
+                     values = c("Simulated Mean" = col_sim, 
+                                "Empirical Target" = col_emp)) +
+  scale_fill_manual(name = NULL,
+                    values = c("95% Confidence Interval" = col_sim)) +
+  
   labs(
     title = "Hybrid q-Score Distribution",
-    #subtitle = paste0("Comparing Hybrids Only | Avg Fixation Removed: ", round(avg_fixation*100, 1), "%"),
+    subtitle = "Shaded area represents the 95% Confidence Interval of the Mean",
     x = "Hybrid Index (q-Score)",
     y = "Density"
   ) +
   theme_minimal() +
   theme(
-    legend.position = c(0.3, 0.9), # Place legend inside plot top-right
+    legend.position = c(0.8, 0.8), # Place legend inside plot top-right
     legend.background = element_rect(fill="white", color="gray90"),
     plot.title = element_text(face = "bold", size = 14)
   )
 
 print(p)
-ggsave("Beta_Comparison_Filtered.png", plot = p, width = 8, height = 6)
+ggsave("Beta_Comparison_Filtered_CI.png", plot = p, width = 8, height = 6)

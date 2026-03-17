@@ -5,3 +5,5 @@
 *.csv
 *.venv
 *.Rproj
+.DS_Store
+.idea
